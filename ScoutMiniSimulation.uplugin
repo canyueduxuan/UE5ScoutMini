@@ -1,0 +1,19 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0.0",
+  "FriendlyName": "Scout Mini Simulation",
+  "Description": "Scout Mini four-wheel skid-steer UGV simulation for UE 5.0.",
+  "Category": "Simulation",
+  "CreatedBy": "OpenAI",
+  "CanContainContent": true,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "ScoutMiniSimulation",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

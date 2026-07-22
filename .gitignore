@@ -1,0 +1,41 @@
+# Unreal generated files
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# Packaged plugin output
+Package/
+Packaged/
+Dist/
+
+# Visual Studio
+.vs/
+*.sln
+*.suo
+*.user
+*.userprefs
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.sdf
+
+# Rider / IntelliJ
+.idea/
+*.sln.DotSettings.user
+
+# VS Code local settings
+.vscode/
+
+# Build and runtime logs
+*.log
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Crash data
+Crashes/
