@@ -9,6 +9,12 @@
   "CanContainContent": true,
   "IsBetaVersion": true,
   "Installed": false,
+  "Plugins": [
+    {
+      "Name": "ROSIntegration",
+      "Enabled": true
+    }
+  ],
   "Modules": [
     {
       "Name": "ScoutMiniSimulation",

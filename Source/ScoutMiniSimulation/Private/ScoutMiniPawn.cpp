@@ -1,5 +1,6 @@
 #include "ScoutMiniPawn.h"
 #include "ScoutMiniMovementComponent.h"
+#include "ScoutMiniROSComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/InputComponent.h"
@@ -72,6 +73,7 @@ AScoutMiniPawn::AScoutMiniPawn()
     Camera->SetupAttachment(SpringArm);
 
     VehicleMovement = CreateDefaultSubobject<UScoutMiniMovementComponent>(TEXT("VehicleMovement"));
+    ROSController = CreateDefaultSubobject<UScoutMiniROSComponent>(TEXT("ROSController"));
 }
 
 UStaticMeshComponent* AScoutMiniPawn::CreateWheel(const FName Name, USceneComponent* Parent)

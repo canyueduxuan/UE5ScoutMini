@@ -9,6 +9,7 @@ class UCameraComponent;
 class USceneComponent;
 class UStaticMeshComponent;
 class UScoutMiniMovementComponent;
+class UScoutMiniROSComponent;
 
 UCLASS(Blueprintable)
 class SCOUTMINISIMULATION_API AScoutMiniPawn : public APawn
@@ -28,6 +29,9 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vehicle")
     UScoutMiniMovementComponent* VehicleMovement;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ROS")
+    UScoutMiniROSComponent* ROSController;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vehicle")
     UCameraComponent* Camera;
