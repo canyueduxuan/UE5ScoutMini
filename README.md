@@ -60,3 +60,5 @@ VehicleMovement->SetVelocityCommand(2.0f, 0.5f);
 - 底盘和四个视觉轮网格保持 `NoCollision`。
 - 地面必须阻挡 `Visibility` 通道。
 - 旧蓝图若保存过组件参数，需要恢复 C++ 默认值或重新创建子类。
+
+[![scout mini](./Content/ScoutMini/Resources/HighresScreenshot00000.png)](./Content/ScoutMini/Resources/Scoutmini.mp4)
