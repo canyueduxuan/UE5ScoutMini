@@ -4,6 +4,8 @@ Every `ScoutMiniPawn` contains a `ScoutMiniROSComponent` by default. The compone
 uses ROSIntegration/rosbridge and provides:
 
 - subscription: `/cmd_vel` (`geometry_msgs/Twist`)
+- subscription: `/pos_cmd` (`nav_msgs/Path`), rendered as a green debug line
+- subscription: `/trajs_visual_ue` (`std_msgs/Float32MultiArray`), rendered as score-coloured debug points
 - publisher: `/odom` (`nav_msgs/Odometry`)
 - publisher: `/tf` (`tf2_msgs/TFMessage`), transform `odom -> base_link`
 
@@ -36,3 +38,15 @@ rosrun tf tf_echo odom base_link
 ```
 
 Publishing a positive `angular.z` must turn the robot left.
+
+The planned-path visualization currently treats incoming path positions as odometry-relative
+ROS coordinates (metres, X forward/Y left/Z up). It intentionally does not transform the
+message's `frame_id`; `/pos_cmd`'s existing `camera_init` frame is left unchanged in the
+first implementation.
+
+Candidate trajectory arrays contain repeated `[x, y, z, intensity]` float tuples.
+The original `/trajs_visual` PointCloud2 remains available for RViz. UE points are
+evenly sampled when the array exceeds `MaxCandidatePoints`; stale points are cleared after
+`CandidateTimeoutSeconds`. As with `/pos_cmd`, the first implementation leaves
+the incoming `camera_init` frame unchanged and treats positions as
+odometry-relative coordinates.
