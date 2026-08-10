@@ -217,11 +217,18 @@ void UScoutMiniROSComponent::ApplyPlannedPath(TArray<FVector>&& RosPoints)
 
 void UScoutMiniROSComponent::DrawPlannedPath() const
 {
-    if (!bShowPlannedPath || !GetWorld() || PlannedPathWorldPoints.Num() < 2) return;
+    const AActor* Owner = GetOwner();
+    if (!bShowPlannedPath || !GetWorld() || !Owner || PlannedPathWorldPoints.Num() < 2) return;
+
+    const float VehicleHeightDelta = Owner->GetActorLocation().Z - OdometryOrigin.GetLocation().Z;
 
     for (int32 Index = 1; Index < PlannedPathWorldPoints.Num(); ++Index)
     {
-        DrawDebugLine(GetWorld(), PlannedPathWorldPoints[Index - 1], PlannedPathWorldPoints[Index],
+        FVector Start = PlannedPathWorldPoints[Index - 1];
+        FVector End = PlannedPathWorldPoints[Index];
+        Start.Z += VehicleHeightDelta;
+        End.Z += VehicleHeightDelta;
+        DrawDebugLine(GetWorld(), Start, End,
             PlannedPathColor, false, 0.0f, 0, PlannedPathThickness);
     }
 }
@@ -263,10 +270,15 @@ void UScoutMiniROSComponent::ApplyCandidateTrajectories(TArray<FCandidatePoint>&
 
 void UScoutMiniROSComponent::DrawCandidateTrajectories() const
 {
-    if (!bShowCandidateTrajectories || !GetWorld()) return;
+    const AActor* Owner = GetOwner();
+    if (!bShowCandidateTrajectories || !GetWorld() || !Owner) return;
+
+    const float VehicleHeightDelta = Owner->GetActorLocation().Z - OdometryOrigin.GetLocation().Z;
     for (const FCandidatePoint& Point : CandidateTrajectoryPoints)
     {
-        DrawDebugPoint(GetWorld(), Point.Position, CandidatePointSize, Point.Color, false, 0.0f, 0);
+        FVector DrawPosition = Point.Position;
+        DrawPosition.Z += VehicleHeightDelta;
+        DrawDebugPoint(GetWorld(), DrawPosition, CandidatePointSize, Point.Color, false, 0.0f, 0);
     }
 }
 

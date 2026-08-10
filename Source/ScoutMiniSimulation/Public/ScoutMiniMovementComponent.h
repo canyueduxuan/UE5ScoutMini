@@ -72,6 +72,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Dynamics", meta=(ClampMin="0.0"))
     float SuspensionDamping = 800.0f;
 
+    /** Keeps the chassis aligned with the supporting surface without locking pitch or roll. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Dynamics", meta=(ClampMin="0.0"))
+    float GroundAlignmentStiffness = 200.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Dynamics", meta=(ClampMin="0.0"))
+    float GroundAlignmentDamping = 60.0f;
+
     /** Prevent a single contact from injecting an unstable force spike. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Dynamics", meta=(ClampMin="1.0"))
     float MaxSuspensionForcePerWheel = 400.0f;

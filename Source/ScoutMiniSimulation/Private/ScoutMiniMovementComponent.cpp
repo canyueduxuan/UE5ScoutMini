@@ -135,7 +135,7 @@ void UScoutMiniMovementComponent::TickDynamics(const float DeltaTime, const floa
     FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ScoutMiniSuspension), false, Owner);
     int32 ContactCount = 0;
     float TotalNormalForceN = 0.0f;
-    FVector WeightedGroundNormal = FVector::ZeroVector;
+    FVector GroundNormalSum = FVector::ZeroVector;
     for (int32 Index = 0; Index < 4; ++Index)
     {
         const FVector Mount = Transform.TransformPosition(LocalWheels[Index]);
@@ -152,13 +152,13 @@ void UScoutMiniMovementComponent::TickDynamics(const float DeltaTime, const floa
             0.0f,
             MaxSuspensionForcePerWheel);
         TotalNormalForceN += NormalForceN;
-        WeightedGroundNormal += Hit.ImpactNormal * NormalForceN;
+        GroundNormalSum += Hit.ImpactNormal;
 
         // The stable model keeps only vertical suspension at the contact patch.
         // Drive and lateral stabilization are applied at the centre of mass
         // below, avoiding pitch/roll impulses from discrete ray contacts.
         const FVector ForceUE = Up * NormalForceN * 100.0f;
-        Body->AddForceAtLocation(ForceUE, Hit.ImpactPoint);
+        Body->AddForce(ForceUE);
     }
 
     const FVector VelocityCm = Body->GetPhysicsLinearVelocity();
@@ -167,7 +167,14 @@ void UScoutMiniMovementComponent::TickDynamics(const float DeltaTime, const floa
 
     if (ContactCount > 0)
     {
-        const FVector GroundNormal = WeightedGroundNormal.GetSafeNormal(KINDA_SMALL_NUMBER, Up);
+        const FVector GroundNormal = GroundNormalSum.GetSafeNormal(KINDA_SMALL_NUMBER, Up);
+        const FVector AngularVelocity = Body->GetPhysicsAngularVelocityInRadians();
+        const FVector TiltAngularVelocity = FVector::VectorPlaneProject(AngularVelocity, GroundNormal);
+        const FVector AlignmentTorqueNm =
+            FVector::CrossProduct(Up, GroundNormal) * GroundAlignmentStiffness
+            - TiltAngularVelocity * GroundAlignmentDamping;
+        Body->AddTorqueInRadians(AlignmentTorqueNm * 10000.0f);
+
         // Drive tangent to the supporting surface. Using raw BodyForward on a
         // slope can inject a vertical force that pitches the short-wheelbase
         // vehicle over its front axle.
@@ -188,11 +195,7 @@ void UScoutMiniMovementComponent::TickDynamics(const float DeltaTime, const floa
             DriveForceN *= Scale;
             LateralForceN *= Scale;
         }
-        const FVector CentreOfMass = Body->GetCenterOfMass();
-        const FVector DriveApplicationPoint = CentreOfMass - Up * DriveForceApplicationDepth * 100.0f;
-        Body->AddForceAtLocation(
-            (DriveForward * DriveForceN + DriveRight * LateralForceN) * 100.0f,
-            DriveApplicationPoint);
+        Body->AddForce((DriveForward * DriveForceN + DriveRight * LateralForceN) * 100.0f);
         Body->AddTorqueInRadians(GroundNormal * RequestedYawTorqueNm * 10000.0f);
 
         const float SpeedMps = VelocityCm.Size() / 100.0f;
