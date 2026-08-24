@@ -124,6 +124,14 @@ public:
     UFUNCTION(BlueprintPure, Category="Vehicle|State")
     float GetAngularVelocity() const { return CurrentAngularVelocity; }
 
+    /** Actual world-space linear velocity in m/s. */
+    UFUNCTION(BlueprintPure, Category="Vehicle|State")
+    FVector GetWorldLinearVelocityMps() const;
+
+    /** Actual world-space angular velocity in rad/s using UE axes. */
+    UFUNCTION(BlueprintPure, Category="Vehicle|State")
+    FVector GetWorldAngularVelocityRadps() const;
+
     UFUNCTION(BlueprintPure, Category="Vehicle|State")
     void GetDifferentialWheelVelocities(float& LeftMps, float& RightMps) const;
 

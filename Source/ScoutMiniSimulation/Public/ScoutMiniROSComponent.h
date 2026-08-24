@@ -60,8 +60,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Odometry")
     bool bPublishTF = true;
 
+    /** Publish the full UE world pose instead of a pose relative to the pawn transform at BeginPlay. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Odometry")
-    bool bPlanarOdometry = true;
+    bool bUseAbsoluteWorldOdometry = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Path Visualization")
     bool bShowPlannedPath = true;
@@ -135,6 +136,7 @@ private:
     void ApplyVelocityCommand(double LinearX, double AngularZ);
     void ApplyPlannedPath(TArray<FVector>&& RosPoints);
     void ApplyCandidateTrajectories(TArray<FCandidatePoint>&& RosPoints);
+    FVector ConvertROSPositionToUEWorld(const FVector& RosPosition) const;
     void DrawPlannedPath() const;
     void DrawCandidateTrajectories() const;
     void PublishOdometryAndTF();

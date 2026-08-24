@@ -207,28 +207,26 @@ void UScoutMiniROSComponent::ApplyPlannedPath(TArray<FVector>&& RosPoints)
     PlannedPathWorldPoints.Reset(RosPoints.Num());
     for (const FVector& RosPoint : RosPoints)
     {
-        // ROS uses metres with X forward/Y left/Z up. UE uses centimetres with Y right.
-        const FVector LocalUE(RosPoint.X * 100.0, -RosPoint.Y * 100.0, RosPoint.Z * 100.0);
-        FVector WorldPoint = OdometryOrigin.TransformPosition(LocalUE);
+        FVector WorldPoint = ConvertROSPositionToUEWorld(RosPoint);
         WorldPoint.Z += PlannedPathHeightOffset;
         PlannedPathWorldPoints.Add(WorldPoint);
     }
 }
 
+FVector UScoutMiniROSComponent::ConvertROSPositionToUEWorld(const FVector& RosPosition) const
+{
+    // ROS uses metres with X forward/Y left/Z up. UE uses centimetres with Y right.
+    const FVector UEPosition(RosPosition.X * 100.0, -RosPosition.Y * 100.0, RosPosition.Z * 100.0);
+    return bUseAbsoluteWorldOdometry ? UEPosition : OdometryOrigin.TransformPosition(UEPosition);
+}
+
 void UScoutMiniROSComponent::DrawPlannedPath() const
 {
-    const AActor* Owner = GetOwner();
-    if (!bShowPlannedPath || !GetWorld() || !Owner || PlannedPathWorldPoints.Num() < 2) return;
-
-    const float VehicleHeightDelta = Owner->GetActorLocation().Z - OdometryOrigin.GetLocation().Z;
+    if (!bShowPlannedPath || !GetWorld() || PlannedPathWorldPoints.Num() < 2) return;
 
     for (int32 Index = 1; Index < PlannedPathWorldPoints.Num(); ++Index)
     {
-        FVector Start = PlannedPathWorldPoints[Index - 1];
-        FVector End = PlannedPathWorldPoints[Index];
-        Start.Z += VehicleHeightDelta;
-        End.Z += VehicleHeightDelta;
-        DrawDebugLine(GetWorld(), Start, End,
+        DrawDebugLine(GetWorld(), PlannedPathWorldPoints[Index - 1], PlannedPathWorldPoints[Index],
             PlannedPathColor, false, 0.0f, 0, PlannedPathThickness);
     }
 }
@@ -252,8 +250,7 @@ void UScoutMiniROSComponent::ApplyCandidateTrajectories(TArray<FCandidatePoint>&
         MinIntensity = FMath::Min(MinIntensity, Point.Intensity);
         MaxIntensity = FMath::Max(MaxIntensity, Point.Intensity);
 
-        const FVector LocalUE(Point.Position.X * 100.0, -Point.Position.Y * 100.0, Point.Position.Z * 100.0);
-        Point.Position = OdometryOrigin.TransformPosition(LocalUE);
+        Point.Position = ConvertROSPositionToUEWorld(Point.Position);
         Point.Position.Z += CandidateHeightOffset;
     }
 
@@ -270,15 +267,10 @@ void UScoutMiniROSComponent::ApplyCandidateTrajectories(TArray<FCandidatePoint>&
 
 void UScoutMiniROSComponent::DrawCandidateTrajectories() const
 {
-    const AActor* Owner = GetOwner();
-    if (!bShowCandidateTrajectories || !GetWorld() || !Owner) return;
-
-    const float VehicleHeightDelta = Owner->GetActorLocation().Z - OdometryOrigin.GetLocation().Z;
+    if (!bShowCandidateTrajectories || !GetWorld()) return;
     for (const FCandidatePoint& Point : CandidateTrajectoryPoints)
     {
-        FVector DrawPosition = Point.Position;
-        DrawPosition.Z += VehicleHeightDelta;
-        DrawDebugPoint(GetWorld(), DrawPosition, CandidatePointSize, Point.Color, false, 0.0f, 0);
+        DrawDebugPoint(GetWorld(), Point.Position, CandidatePointSize, Point.Color, false, 0.0f, 0);
     }
 }
 
@@ -286,15 +278,12 @@ void UScoutMiniROSComponent::PublishOdometryAndTF()
 {
     if (!OdometryTopic || !GetOwner() || !Movement) return;
 
-    const FTransform Relative = GetOwner()->GetActorTransform().GetRelativeTransform(OdometryOrigin);
-    FVector Location = Relative.GetLocation() / 100.0f;
-    FQuat Rotation = Relative.GetRotation().GetNormalized();
-    if (bPlanarOdometry)
-    {
-        Location.Z = 0.0f;
-        const float YawRadians = FMath::DegreesToRadians(Relative.Rotator().Yaw);
-        Rotation = FQuat(FVector::UpVector, YawRadians);
-    }
+    const FTransform ActorTransform = GetOwner()->GetActorTransform();
+    const FTransform OdometryTransform = bUseAbsoluteWorldOdometry
+        ? ActorTransform
+        : ActorTransform.GetRelativeTransform(OdometryOrigin);
+    const FVector Location = OdometryTransform.GetLocation() / 100.0f;
+    const FQuat Rotation = OdometryTransform.GetRotation().GetNormalized();
 
     const double RosX = Location.X;
     const double RosY = -Location.Y;
@@ -303,6 +292,16 @@ void UScoutMiniROSComponent::PublishOdometryAndTF()
     const double RosQY = Rotation.Y;
     const double RosQZ = -Rotation.Z;
     const double RosQW = Rotation.W;
+
+    // test_yopo_ros_UE5.py consumes linear.x/y directly as world horizontal
+    // speed (vel_w) and angular.z as the world yaw rate, so keep twist in the
+    // ROS world basis. Polar vectors reflect Y; axial vectors reflect X and Z.
+    const FVector LinearVelocityWorldUE = Movement->GetWorldLinearVelocityMps();
+    const FVector AngularVelocityWorldUE = Movement->GetWorldAngularVelocityRadps();
+    FVector LinearVelocityROS(
+        LinearVelocityWorldUE.X, -LinearVelocityWorldUE.Y, LinearVelocityWorldUE.Z);
+    FVector AngularVelocityROS(
+        -AngularVelocityWorldUE.X, AngularVelocityWorldUE.Y, -AngularVelocityWorldUE.Z);
     const FROSTime Stamp = FROSTime::Now();
 
     TSharedPtr<ROSMessages::nav_msgs::Odometry> Odom = MakeShared<ROSMessages::nav_msgs::Odometry>();
@@ -318,8 +317,12 @@ void UScoutMiniROSComponent::PublishOdometryAndTF()
     Odom->pose.pose.orientation.z = RosQZ;
     Odom->pose.pose.orientation.w = RosQW;
     Odom->pose.covariance.Init(0.0, 36);
-    Odom->twist.twist.linear.x = Movement->GetLinearVelocity();
-    Odom->twist.twist.angular.z = -Movement->GetAngularVelocity();
+    Odom->twist.twist.linear.x = LinearVelocityROS.X;
+    Odom->twist.twist.linear.y = LinearVelocityROS.Y;
+    Odom->twist.twist.linear.z = LinearVelocityROS.Z;
+    Odom->twist.twist.angular.x = AngularVelocityROS.X;
+    Odom->twist.twist.angular.y = AngularVelocityROS.Y;
+    Odom->twist.twist.angular.z = AngularVelocityROS.Z;
     Odom->twist.covariance.Init(0.0, 36);
     // Non-zero diagonal entries prevent consumers from interpreting this as perfect ground truth.
     Odom->pose.covariance[0] = Odom->pose.covariance[7] = 0.01;

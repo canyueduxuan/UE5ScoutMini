@@ -16,9 +16,17 @@ The project uses `ROSIntegrationGameInstance` and defaults to connection ID 0
 ## Coordinate convention
 
 The ROS interface follows REP-103: X forward, Y left, Z up and positive yaw to
-the left. Unreal positions and rotations are converted before publishing. The
-odometry origin is the pawn pose at BeginPlay; `/odom` and `/tf` are generated
-from the same pose and timestamp.
+the left. Unreal positions and rotations are converted before publishing.
+
+Enable `bUseAbsoluteWorldOdometry` on `ScoutMiniROSComponent` to convert the pawn's
+full absolute UE world transform directly to ROS metres and REP-103 axes. When it is
+disabled, the full pose is relative to the pawn transform at BeginPlay. Position,
+roll, pitch and yaw are never flattened.
+
+`/odom` and `/tf` are generated from the same pose and timestamp. Twist follows the
+YOPO UE consumer convention: measured linear and angular velocities are published in
+the ROS world basis. This makes `sqrt(linear.x^2 + linear.y^2)` the world-horizontal
+speed consumed by `test_yopo_ros_UE5.py`; `angular.z` has ROS's positive-left sign.
 
 ## Safety
 
@@ -39,14 +47,13 @@ rosrun tf tf_echo odom base_link
 
 Publishing a positive `angular.z` must turn the robot left.
 
-The planned-path visualization currently treats incoming path positions as odometry-relative
-ROS coordinates (metres, X forward/Y left/Z up). It intentionally does not transform the
-message's `frame_id`; `/pos_cmd`'s existing `camera_init` frame is left unchanged in the
-first implementation.
+Planned-path positions use the same coordinates as the published odometry. With
+`bUseAbsoluteWorldOdometry` enabled they are converted directly from absolute ROS world
+coordinates to UE world coordinates; otherwise they are transformed through the pawn's
+BeginPlay odometry origin. The message's existing `camera_init` frame name is not used.
 
 Candidate trajectory arrays contain repeated `[x, y, z, intensity]` float tuples.
 The original `/trajs_visual` PointCloud2 remains available for RViz. UE points are
 evenly sampled when the array exceeds `MaxCandidatePoints`; stale points are cleared after
-`CandidateTimeoutSeconds`. As with `/pos_cmd`, the first implementation leaves
-the incoming `camera_init` frame unchanged and treats positions as
-odometry-relative coordinates.
+`CandidateTimeoutSeconds`. Candidate positions use the same absolute-or-relative
+conversion as `/pos_cmd`.

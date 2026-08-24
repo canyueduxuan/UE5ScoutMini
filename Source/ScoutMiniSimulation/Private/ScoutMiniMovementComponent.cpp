@@ -213,3 +213,41 @@ void UScoutMiniMovementComponent::GetDifferentialWheelVelocities(float& LeftMps,
     LeftMps = CurrentLinearVelocity + CurrentAngularVelocity * TrackWidth * 0.5f;
     RightMps = CurrentLinearVelocity - CurrentAngularVelocity * TrackWidth * 0.5f;
 }
+
+FVector UScoutMiniMovementComponent::GetWorldLinearVelocityMps() const
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return FVector::ZeroVector;
+
+    if (bUseDynamics)
+    {
+        if (UPrimitiveComponent* Body = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+        {
+            if (Body->IsSimulatingPhysics())
+            {
+                return Body->GetPhysicsLinearVelocity() / 100.0f;
+            }
+        }
+    }
+
+    return Owner->GetActorForwardVector() * CurrentLinearVelocity;
+}
+
+FVector UScoutMiniMovementComponent::GetWorldAngularVelocityRadps() const
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return FVector::ZeroVector;
+
+    if (bUseDynamics)
+    {
+        if (UPrimitiveComponent* Body = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+        {
+            if (Body->IsSimulatingPhysics())
+            {
+                return Body->GetPhysicsAngularVelocityInRadians();
+            }
+        }
+    }
+
+    return Owner->GetActorUpVector() * CurrentAngularVelocity;
+}
