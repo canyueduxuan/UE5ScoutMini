@@ -30,10 +30,19 @@ speed consumed by `test_yopo_ros_UE5.py`; `angular.z` has ROS's positive-left si
 
 ## Safety
 
-The movement component is switched to Programmatic control at BeginPlay. A valid
-command is limited by the movement component's speed limits. Non-finite commands
-are rejected, and the robot stops when `/cmd_vel` has not been received for
-`CommandTimeoutSeconds` (0.5 s by default).
+ROS communication and vehicle control authority are independent. By default the
+ROS component preserves the movement component's configured control mode. In
+Manual mode, W/S/A/D controls the vehicle while odometry, TF and visualization
+remain active; incoming `/cmd_vel` messages are ignored.
+
+Enable `bTakeControlOnBeginPlay` to switch the movement component to Programmatic
+control automatically after a successful ROS connection. Alternatively, call
+`SetControlMode` at runtime to switch between Manual and Programmatic control.
+
+In Programmatic mode, valid commands are limited by the movement component's speed
+limits. Non-finite commands are rejected, and the robot stops when `/cmd_vel` has
+not been received for `CommandTimeoutSeconds` (0.5 s by default). The command
+watchdog does not stop or modify Manual input.
 
 ## ROS 1 smoke test
 

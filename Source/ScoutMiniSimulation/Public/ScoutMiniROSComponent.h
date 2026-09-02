@@ -57,6 +57,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Control")
     float AngularScale = 1.0f;
 
+    /** When enabled, a successful ROS connection switches the vehicle to Programmatic at BeginPlay.
+     *  When disabled, the movement component's configured control mode is preserved.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Control")
+    bool bTakeControlOnBeginPlay = false;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ROS|Odometry")
     bool bPublishTF = true;
 
@@ -127,6 +133,7 @@ private:
     uint32 Sequence = 0;
     bool bHasReceivedCommand = false;
     bool bWatchdogStopped = false;
+    bool bLoggedIgnoredVelocityCommand = false;
     TArray<FVector> PlannedPathWorldPoints;
     TArray<FCandidatePoint> CandidateTrajectoryPoints;
     double LastCandidateTrajectoryTime = 0.0;

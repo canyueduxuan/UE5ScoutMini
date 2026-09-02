@@ -40,8 +40,15 @@ void UScoutMiniROSComponent::BeginPlay()
     }
 
     OdometryOrigin = GetOwner()->GetActorTransform();
-    Movement->SetControlMode(EScoutMiniControlMode::Programmatic);
+    if (bTakeControlOnBeginPlay)
+    {
+        Movement->SetControlMode(EScoutMiniControlMode::Programmatic);
+    }
     Movement->Stop();
+
+    UE_LOG(LogTemp, Display, TEXT("ScoutMiniROS: control mode=%s, take control on BeginPlay=%s"),
+        Movement->ControlMode == EScoutMiniControlMode::Manual ? TEXT("Manual") : TEXT("Programmatic"),
+        bTakeControlOnBeginPlay ? TEXT("true") : TEXT("false"));
 
     CmdVelTopic = NewObject<UTopic>(this);
     CmdVelTopic->Init(Core, CmdVelTopicName, TEXT("geometry_msgs/Twist"), 1, false);
@@ -157,9 +164,25 @@ void UScoutMiniROSComponent::BeginPlay()
 
 void UScoutMiniROSComponent::ApplyVelocityCommand(const double LinearX, const double AngularZ)
 {
-    if (!Movement || !FMath::IsFinite(LinearX) || !FMath::IsFinite(AngularZ))
+    if (!Movement) return;
+
+    // ROS remains available for odometry, TF and visualization in Manual mode,
+    // but it must not overwrite or stop keyboard input.
+    if (Movement->ControlMode != EScoutMiniControlMode::Programmatic)
     {
-        if (Movement) Movement->Stop();
+        if (!bLoggedIgnoredVelocityCommand)
+        {
+            UE_LOG(LogTemp, Display, TEXT("ScoutMiniROS: ignoring %s while control mode is Manual"),
+                *CmdVelTopicName);
+            bLoggedIgnoredVelocityCommand = true;
+        }
+        return;
+    }
+
+    bLoggedIgnoredVelocityCommand = false;
+    if (!FMath::IsFinite(LinearX) || !FMath::IsFinite(AngularZ))
+    {
+        Movement->Stop();
         return;
     }
 
@@ -185,7 +208,8 @@ void UScoutMiniROSComponent::TickComponent(const float DeltaTime, const ELevelTi
         CandidateTrajectoryPoints.Reset();
     }
 
-    if (CommandTimeoutSeconds > 0.0f && bHasReceivedCommand && !bWatchdogStopped
+    if (Movement->ControlMode == EScoutMiniControlMode::Programmatic
+        && CommandTimeoutSeconds > 0.0f && bHasReceivedCommand && !bWatchdogStopped
         && GetWorld()->GetTimeSeconds() - LastCommandTime > CommandTimeoutSeconds)
     {
         Movement->Stop();
