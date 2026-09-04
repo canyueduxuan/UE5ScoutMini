@@ -112,6 +112,27 @@ public:
     UFUNCTION(BlueprintCallable, Category="Vehicle|Control", meta=(DisplayName="Set Velocity Command (m/s, rad/s)"))
     void SetVelocityCommand(float LinearVelocityMps, float AngularVelocityRadps);
 
+    /** Claim exclusive programmatic command ownership. Existing ownership is kept unless bForce is true. */
+    UFUNCTION(BlueprintCallable, Category="Vehicle|Control")
+    bool AcquireCommandAuthority(UObject* Requester, bool bForce = false);
+
+    UFUNCTION(BlueprintCallable, Category="Vehicle|Control")
+    void ReleaseCommandAuthority(UObject* Requester);
+
+    /** Send a velocity command only when Requester owns programmatic control. */
+    UFUNCTION(BlueprintCallable, Category="Vehicle|Control")
+    bool SetVelocityCommandFrom(UObject* Requester, float LinearVelocityMps, float AngularVelocityRadps);
+
+    /** Stop only when Requester owns programmatic control. */
+    UFUNCTION(BlueprintCallable, Category="Vehicle|Control")
+    bool StopFrom(UObject* Requester);
+
+    UFUNCTION(BlueprintPure, Category="Vehicle|Control")
+    bool HasCommandAuthority(const UObject* Requester) const;
+
+    UFUNCTION(BlueprintPure, Category="Vehicle|Control")
+    bool HasAnyCommandAuthority() const { return CommandAuthority.IsValid(); }
+
     UFUNCTION(BlueprintCallable, Category="Vehicle|Control")
     void Stop();
 
@@ -136,12 +157,17 @@ public:
     void GetDifferentialWheelVelocities(float& LeftMps, float& RightMps) const;
 
 private:
+    UPROPERTY(Transient)
+    TWeakObjectPtr<UObject> CommandAuthority;
+    bool bHadCommandAuthority = false;
+
     float CommandLinearVelocity = 0.0f;
     float CommandAngularVelocity = 0.0f;
     float ManualThrottle = 0.0f;
     float ManualSteering = 0.0f;
     float CurrentLinearVelocity = 0.0f;
     float CurrentAngularVelocity = 0.0f;
+    void ApplyVelocityCommand(float LinearVelocityMps, float AngularVelocityRadps);
     void ResolveTarget(float& OutLinear, float& OutAngular) const;
     void TickDynamics(float DeltaTime, float TargetLinear, float TargetAngular);
     void TickKinematic(float DeltaTime);

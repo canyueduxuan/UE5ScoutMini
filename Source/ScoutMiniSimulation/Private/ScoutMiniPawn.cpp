@@ -1,5 +1,7 @@
 #include "ScoutMiniPawn.h"
 #include "ScoutMiniMovementComponent.h"
+#include "ScoutMiniNavigationComponent.h"
+#include "ScoutMiniPathFollowerComponent.h"
 #include "ScoutMiniROSComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
@@ -73,6 +75,8 @@ AScoutMiniPawn::AScoutMiniPawn()
     Camera->SetupAttachment(SpringArm);
 
     VehicleMovement = CreateDefaultSubobject<UScoutMiniMovementComponent>(TEXT("VehicleMovement"));
+    Navigation = CreateDefaultSubobject<UScoutMiniNavigationComponent>(TEXT("Navigation"));
+    PathFollower = CreateDefaultSubobject<UScoutMiniPathFollowerComponent>(TEXT("PathFollower"));
     ROSController = CreateDefaultSubobject<UScoutMiniROSComponent>(TEXT("ROSController"));
 }
 

@@ -134,6 +134,7 @@ private:
     bool bHasReceivedCommand = false;
     bool bWatchdogStopped = false;
     bool bLoggedIgnoredVelocityCommand = false;
+    bool bLoggedAuthorityDenied = false;
     TArray<FVector> PlannedPathWorldPoints;
     TArray<FCandidatePoint> CandidateTrajectoryPoints;
     double LastCandidateTrajectoryTime = 0.0;

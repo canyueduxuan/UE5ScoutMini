@@ -28,9 +28,69 @@ void UScoutMiniMovementComponent::SetControlMode(const EScoutMiniControlMode New
 {
     ControlMode = NewMode;
     Stop();
+    if (ControlMode == EScoutMiniControlMode::Manual)
+    {
+        CommandAuthority.Reset();
+        bHadCommandAuthority = false;
+    }
 }
 
 void UScoutMiniMovementComponent::SetVelocityCommand(const float LinearVelocityMps, const float AngularVelocityRadps)
+{
+    // Preserve the original direct-control API while preventing it from
+    // overwriting a command source that explicitly owns the vehicle.
+    if (CommandAuthority.IsValid()) return;
+    ApplyVelocityCommand(LinearVelocityMps, AngularVelocityRadps);
+}
+
+bool UScoutMiniMovementComponent::AcquireCommandAuthority(UObject* Requester, const bool bForce)
+{
+    if (!Requester) return false;
+    if (CommandAuthority.Get() == Requester) return true;
+    if (CommandAuthority.IsValid() && !bForce) return false;
+
+    CommandAuthority = Requester;
+    bHadCommandAuthority = true;
+    CommandLinearVelocity = 0.0f;
+    CommandAngularVelocity = 0.0f;
+    return true;
+}
+
+void UScoutMiniMovementComponent::ReleaseCommandAuthority(UObject* Requester)
+{
+    if (!Requester || CommandAuthority.Get() != Requester) return;
+    CommandLinearVelocity = 0.0f;
+    CommandAngularVelocity = 0.0f;
+    CommandAuthority.Reset();
+    bHadCommandAuthority = false;
+}
+
+bool UScoutMiniMovementComponent::SetVelocityCommandFrom(
+    UObject* Requester, const float LinearVelocityMps, const float AngularVelocityRadps)
+{
+    if (ControlMode != EScoutMiniControlMode::Programmatic || !HasCommandAuthority(Requester))
+    {
+        return false;
+    }
+    ApplyVelocityCommand(LinearVelocityMps, AngularVelocityRadps);
+    return true;
+}
+
+bool UScoutMiniMovementComponent::StopFrom(UObject* Requester)
+{
+    if (!HasCommandAuthority(Requester)) return false;
+    CommandLinearVelocity = 0.0f;
+    CommandAngularVelocity = 0.0f;
+    return true;
+}
+
+bool UScoutMiniMovementComponent::HasCommandAuthority(const UObject* Requester) const
+{
+    return Requester && CommandAuthority.Get() == Requester;
+}
+
+void UScoutMiniMovementComponent::ApplyVelocityCommand(
+    const float LinearVelocityMps, const float AngularVelocityRadps)
 {
     CommandLinearVelocity = FMath::Clamp(LinearVelocityMps, -MaxLinearSpeed, MaxLinearSpeed);
     CommandAngularVelocity = FMath::Clamp(AngularVelocityRadps, -MaxAngularSpeed, MaxAngularSpeed);
@@ -65,6 +125,14 @@ void UScoutMiniMovementComponent::TickComponent(const float DeltaTime, const ELe
     if (!Owner || DeltaTime <= 0.0f)
     {
         return;
+    }
+
+    // A destroyed controller must not leave its last velocity latched forever.
+    if (bHadCommandAuthority && !CommandAuthority.IsValid())
+    {
+        CommandLinearVelocity = 0.0f;
+        CommandAngularVelocity = 0.0f;
+        bHadCommandAuthority = false;
     }
 
     float TargetLinear = 0.0f;

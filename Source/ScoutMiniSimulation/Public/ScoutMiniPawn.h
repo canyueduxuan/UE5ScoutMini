@@ -9,6 +9,8 @@ class UCameraComponent;
 class USceneComponent;
 class UStaticMeshComponent;
 class UScoutMiniMovementComponent;
+class UScoutMiniNavigationComponent;
+class UScoutMiniPathFollowerComponent;
 class UScoutMiniROSComponent;
 
 UCLASS(Blueprintable)
@@ -29,6 +31,12 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Vehicle")
     UScoutMiniMovementComponent* VehicleMovement;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Navigation")
+    UScoutMiniNavigationComponent* Navigation;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Navigation")
+    UScoutMiniPathFollowerComponent* PathFollower;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ROS")
     UScoutMiniROSComponent* ROSController;

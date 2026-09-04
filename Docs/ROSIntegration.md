@@ -44,6 +44,11 @@ limits. Non-finite commands are rejected, and the robot stops when `/cmd_vel` ha
 not been received for `CommandTimeoutSeconds` (0.5 s by default). The command
 watchdog does not stop or modify Manual input.
 
+Programmatic controllers use exclusive command authority. ROS claims authority
+when it receives a valid command and releases it on timeout or shutdown. The path
+follower therefore cannot be overwritten by `/cmd_vel`; whichever controller
+already owns the vehicle keeps control unless an explicit forced claim is used.
+
 ## ROS 1 smoke test
 
 ```bash

@@ -43,8 +43,9 @@ void UScoutMiniROSComponent::BeginPlay()
     if (bTakeControlOnBeginPlay)
     {
         Movement->SetControlMode(EScoutMiniControlMode::Programmatic);
+        Movement->AcquireCommandAuthority(this);
     }
-    Movement->Stop();
+    if (Movement->HasCommandAuthority(this)) Movement->StopFrom(this);
 
     UE_LOG(LogTemp, Display, TEXT("ScoutMiniROS: control mode=%s, take control on BeginPlay=%s"),
         Movement->ControlMode == EScoutMiniControlMode::Manual ? TEXT("Manual") : TEXT("Programmatic"),
@@ -182,12 +183,25 @@ void UScoutMiniROSComponent::ApplyVelocityCommand(const double LinearX, const do
     bLoggedIgnoredVelocityCommand = false;
     if (!FMath::IsFinite(LinearX) || !FMath::IsFinite(AngularZ))
     {
-        Movement->Stop();
+        Movement->StopFrom(this);
+        Movement->ReleaseCommandAuthority(this);
         return;
     }
 
+    if (!Movement->AcquireCommandAuthority(this))
+    {
+        if (!bLoggedAuthorityDenied)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ScoutMiniROS: ignoring %s because another controller owns %s"),
+                *CmdVelTopicName, *GetOwner()->GetName());
+            bLoggedAuthorityDenied = true;
+        }
+        return;
+    }
+    bLoggedAuthorityDenied = false;
+
     // ROS: X forward, Y left, positive Z yaw left. UE uses Y right and positive yaw right.
-    Movement->SetVelocityCommand(static_cast<float>(LinearX) * LinearScale,
+    Movement->SetVelocityCommandFrom(this, static_cast<float>(LinearX) * LinearScale,
         static_cast<float>(-AngularZ) * AngularScale);
     LastCommandTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
     bHasReceivedCommand = true;
@@ -212,7 +226,8 @@ void UScoutMiniROSComponent::TickComponent(const float DeltaTime, const ELevelTi
         && CommandTimeoutSeconds > 0.0f && bHasReceivedCommand && !bWatchdogStopped
         && GetWorld()->GetTimeSeconds() - LastCommandTime > CommandTimeoutSeconds)
     {
-        Movement->Stop();
+        Movement->StopFrom(this);
+        Movement->ReleaseCommandAuthority(this);
         bWatchdogStopped = true;
         UE_LOG(LogTemp, Warning, TEXT("ScoutMiniROS: cmd_vel timeout, stopping %s"), *GetOwner()->GetName());
     }
@@ -377,7 +392,11 @@ void UScoutMiniROSComponent::PublishOdometryAndTF()
 
 void UScoutMiniROSComponent::ShutdownROS()
 {
-    if (Movement) Movement->Stop();
+    if (Movement)
+    {
+        Movement->StopFrom(this);
+        Movement->ReleaseCommandAuthority(this);
+    }
     if (CmdVelTopic) CmdVelTopic->Unsubscribe();
     if (PathTopic) PathTopic->Unsubscribe();
     if (CandidateTrajectoriesTopic) CandidateTrajectoriesTopic->Unsubscribe();
